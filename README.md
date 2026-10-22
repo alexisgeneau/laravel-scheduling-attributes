@@ -2,6 +2,8 @@
 
 Schedule Artisan commands and jobs where they are written: PHP attributes on the class, registered in Laravel's own scheduler.
 
+> **Status:** 0.1.0, tested with Laravel 12 and 13 on PHP 8.2 to 8.5. Until 1.0, a minor version may still change the `SchedulingAttributes` discovery methods, the wording of the refusals or the output of `schedule:attributes`; the changelog says so when it happens.
+
 ```php
 use Illuminate\Console\Command;
 use SchedulingAttributes\{Between, DailyAt, Hourly, OnOneServer, Timezone, WithoutOverlapping};

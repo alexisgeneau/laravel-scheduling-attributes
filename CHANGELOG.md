@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - 2026-10-22
+
+First release, tested with Laravel 12 and 13 on PHP 8.2 to 8.5.
 
 - One attribute per method of Laravel's scheduler: frequencies (repeatable, with `arguments:` for the command), day and time constraints, execution options, output destinations and pings.
 - Jobs: `#[OnQueue]` and `#[OnConnection]`, discovery in `app/Jobs`, `SchedulingAttributes::discoverJobsIn()` and `SchedulingAttributes::jobs()`.
