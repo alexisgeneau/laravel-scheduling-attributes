@@ -8,16 +8,12 @@ use Closure;
 use Illuminate\Console\Scheduling\Schedule;
 
 /**
- * The application's schedule, which adds the events declared with attributes the
- * first time its events are read. Everything else is the schedule Laravel built.
+ * The application's schedule, which adds the events declared with attributes before
+ * its events are read. Everything else is the schedule Laravel built.
  */
 final class AttributeSchedule extends Schedule
 {
     private Registrar $registrar;
-
-    private bool $registered = false;
-
-    private bool $registering = false;
 
     /** Takes over the schedule Laravel resolved, with everything it already holds. */
     public static function adopt(Schedule $schedule, Registrar $registrar): self
@@ -33,6 +29,8 @@ final class AttributeSchedule extends Schedule
             }
         }, null, Schedule::class)($instance, $state);
 
+        $registrar->attach($instance);
+
         return $instance;
     }
 
@@ -41,17 +39,30 @@ final class AttributeSchedule extends Schedule
      */
     public function events()
     {
-        if (! $this->registered && ! $this->registering && $this->registrar->ready()) {
-            $this->registering = true;
-
-            try {
-                $this->registrar->register($this);
-            } finally {
-                $this->registered = true;
-                $this->registering = false;
-            }
-        }
+        $this->registrar->registerIfReady();
 
         return parent::events();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Console\Scheduling\Event>
+     */
+    public function dueEvents($app)
+    {
+        $this->registrar->registerIfReady();
+
+        return parent::dueEvents($app);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function eventsForEnvironments(array $environments): array
+    {
+        $this->registrar->registerIfReady();
+
+        return parent::eventsForEnvironments($environments);
     }
 }

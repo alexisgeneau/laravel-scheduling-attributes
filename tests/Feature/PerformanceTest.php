@@ -29,10 +29,9 @@ it('registers a hundred attributed commands in a few milliseconds', function ():
         $kernel->registerCommand(new $class);
     }
 
-    $schedule = $this->app->make(Schedule::class);
-
+    // Resolving the schedule from a command registers the attributes: that is what is timed.
     $start = hrtime(true);
-    $events = $schedule->events();
+    $events = $this->app->make(Schedule::class)->events();
     $elapsed = (hrtime(true) - $start) / 1e6;
 
     expect(count(array_filter($events, static fn ($event): bool => str_contains((string) $event->command, 'generated:'))))->toBe(100)

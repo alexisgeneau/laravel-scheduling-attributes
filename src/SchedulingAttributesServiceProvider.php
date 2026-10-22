@@ -18,11 +18,19 @@ final class SchedulingAttributesServiceProvider extends ServiceProvider
         $this->app->singleton(Discovery::class);
         $this->app->singleton(Registrar::class);
 
-        // The schedule Laravel resolves is taken over by one that reads the attributes
-        // the first time its events are asked for: nothing runs until then.
+        // The schedule Laravel resolves is taken over by one that registers the attributes
+        // before its events are read, and every later resolution (a command asking for the
+        // Schedule, app(Schedule::class)) registers them as soon as Artisan knows its commands.
         $this->app->extend(Schedule::class, fn (Schedule $schedule): Schedule => $schedule instanceof AttributeSchedule
             ? $schedule
             : AttributeSchedule::adopt($schedule, $this->app->make(Registrar::class)));
+
+        $register = function (): void {
+            $this->app->make(Registrar::class)->registerIfReady();
+        };
+
+        $this->app->afterResolving(Schedule::class, $register);
+        $this->app->beforeResolving(Schedule::class, $register);
     }
 
     public function boot(): void

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schedule;
 use SchedulingAttributes\Tests\Fixtures\Commands\PruneReports;
 use SchedulingAttributes\Tests\Fixtures\Commands\SendDigest;
 use SchedulingAttributes\Tests\Fixtures\Jobs\RebuildSearchIndex;
+use SchedulingAttributes\Tests\Fixtures\Jobs\SendNightlyDigest;
 
 it('lists every event with where it comes from', function (): void {
     Schedule::command('reports:rebuild')->weekly();
@@ -19,8 +20,9 @@ it('lists every event with where it comes from', function (): void {
         ->and($output)->toContain('0 3 * * *  | reports:prune --days=30 ', PruneReports::class.' #[DailyAt]')
         ->and($output)->toContain('0 8 * * 1  | digest:send ', SendDigest::class.' #[WeeklyOn]')
         ->and($output)->toContain('0 4 * * *  | '.RebuildSearchIndex::class.' ', RebuildSearchIndex::class.' #[DailyAt]')
+        ->and($output)->toContain('0 5 * * *  | '.SendNightlyDigest::class.' ', SendNightlyDigest::class.' #[DailyAt]')
         ->and($output)->toContain('0 0 * * 0  | reports:rebuild ', '| code ')
-        ->and($output)->toContain('5 scheduled events, 4 from attributes on 3 classes.');
+        ->and($output)->toContain('6 scheduled events, 5 from attributes on 4 classes.');
 });
 
 it('points out an event scheduled both with an attribute and in code', function (): void {

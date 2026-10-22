@@ -67,5 +67,5 @@ it('registers the attribute events once, however often the events are read', fun
     $this->artisan('schedule:list')->assertSuccessful();
 
     expect($this->eventsRunning('reports:prune'))->toHaveCount(2)
-        ->and(SchedulingAttributes::registrations())->toHaveCount(4);
+        ->and(SchedulingAttributes::registrations())->toHaveCount(5);
 });

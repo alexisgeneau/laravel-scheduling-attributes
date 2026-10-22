@@ -8,7 +8,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schedule as ScheduleFacade;
 use SchedulingAttributes\Support\AttributeSchedule;
 use SchedulingAttributes\Tests\Fixtures\Commands\PruneReports;
+use SchedulingAttributes\Tests\Fixtures\Hooks\Allowed;
 use SchedulingAttributes\Tests\Fixtures\Jobs\RebuildSearchIndex;
+use SchedulingAttributes\Tests\Fixtures\Jobs\SendNightlyDigest;
 use SchedulingAttributes\Tests\Fixtures\Ran;
 
 it('turns every frequency attribute of a command into an event with its arguments and modifiers', function (): void {
@@ -69,12 +71,40 @@ it('runs a due job with schedule:run', function (): void {
 
     $this->artisan('schedule:run')->assertSuccessful();
 
-    expect(Ran::$jobs)->toBe([RebuildSearchIndex::class]);
+    expect(Ran::$jobs)->toBe([RebuildSearchIndex::class])
+        ->and(Ran::$hooks)->toBe([]);
 
-    Carbon::setTestNow('2026-10-22 05:00:00');
+    Carbon::setTestNow('2026-10-22 04:30:00');
     $this->artisan('schedule:run')->assertSuccessful();
 
     expect(Ran::$jobs)->toBe([RebuildSearchIndex::class]);
+});
+
+it('runs the hooks of a job around it, with the output when asked for', function (): void {
+    Ran::reset();
+    config()->set('queue.default', 'sync');
+    Carbon::setTestNow('2026-10-22 05:00:00');
+
+    $this->artisan('schedule:run')->assertSuccessful();
+
+    expect(Ran::$jobs)->toBe([SendNightlyDigest::class])
+        ->and(Ran::$hooks)->toBe(['before:'.config('app.name'), 'success', 'after:']);
+});
+
+it('holds a job back when its condition class says so', function (): void {
+    Ran::reset();
+    Allowed::$value = false;
+    config()->set('queue.default', 'sync');
+    Carbon::setTestNow('2026-10-22 05:00:00');
+
+    try {
+        $this->artisan('schedule:run')->assertSuccessful();
+    } finally {
+        Allowed::$value = true;
+    }
+
+    expect(Ran::$jobs)->toBe([])
+        ->and(Ran::$hooks)->toBe([]);
 });
 
 it('holds a due event back with the same filters as the fluent calls', function (): void {

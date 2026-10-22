@@ -64,13 +64,37 @@ Frequency attributes are **repeatable**: each one creates an event, a class may 
 | Execution | `WithoutOverlapping`, `OnOneServer`, `RunInBackground`, `Name`, `User` | class |
 | Output | `SendOutputTo`, `AppendOutputTo`, `EmailOutputTo`, `EmailOutputOnFailure` | class, commands only |
 | Pings | `PingBefore`, `ThenPing`, `PingOnSuccess`, `PingOnFailure` | class |
+| Hooks | `When`, `Skip`, `Before`, `After`, `OnSuccess`, `OnFailure` | class, repeatable, take an invokable class |
 | Jobs | `OnQueue`, `OnConnection` | class, jobs only |
 
 Days of the week take the `SchedulingAttributes\Day` enum or Laravel's integers (Sunday is 0); times are `HH:MM`; several minutes past the hour, days or addresses are passed as a list or as variadic arguments (`#[Days(Day::Monday, Day::Friday)]`, `#[Environments('staging', 'production')]`). Every value is checked when the attribute is built: a wrong one is refused with the attribute, the class and the reason.
 
+### Hooks
+
+An attribute cannot hold a closure, so the hooks take the class of an invokable instead. The container resolves it when the hook fires, injects its constructor dependencies, and hands its `__invoke()` the output of the command when it asks for a `Stringable $output` parameter — the same rule Laravel applies to the closures of `after()`, `onSuccess()` and `onFailure()`:
+
+```php
+#[DailyAt('02:00')]
+#[When(IsBusinessDay::class)]
+#[OnFailure(NotifyOps::class)]
+final class ReconcilePayments extends Command { /* ... */ }
+
+final class NotifyOps
+{
+    public function __construct(private readonly Notifier $notifier) {}
+
+    public function __invoke(Stringable $output): void
+    {
+        $this->notifier->send('Payment reconciliation failed', $output->toString());
+    }
+}
+```
+
+`When` and `Skip` take the verdict of `__invoke()`; `Before`, `After`, `OnSuccess` and `OnFailure` run it. All six are repeatable.
+
 ### What stays in `routes/console.php`
 
-An attribute cannot hold a closure, so `when`, `skip`, `before`, `after`, `onSuccess`, `onFailure`, `then` and the `*If` variants of the pings stay in code, as do `Schedule::call()` and `Schedule::exec()`. Give the event a `#[Name]` and you can still reach it from `routes/console.php` to add a hook.
+`Schedule::call()` and `Schedule::exec()`, the `*If` variants of the pings and `thenWithOutput()` with `$onlyIfOutputExists` have no attribute: they stay in code, next to the attributes, on the same schedule.
 
 ## Jobs
 
@@ -118,7 +142,7 @@ Lists every scheduled event with where it comes from, and warns when the same co
 
 ## How it works
 
-Laravel resolves one `Schedule` for the whole process. The package takes it over with a subclass whose `events()` method, the first time it is called, asks Artisan for the registered commands, scans the job directories, reads the attributes by reflection and registers the events; `schedule:list`, `schedule:run` and everything else read events through that method. Nothing happens in an HTTP request or a queue worker until something asks for the schedule, and a hundred attributed classes register in about 4 ms, once per process — the time `schedule:run` spends booting the application each minute dwarfs it.
+Laravel resolves one `Schedule` for the whole process. The package takes it over and, the first time a command receives it or its events are read once Artisan knows the application's commands, asks Artisan for those commands, scans the job directories, reads the attributes by reflection and registers the events. `schedule:list`, `schedule:run` and everything else then see them like any other event. Nothing happens in an HTTP request or a queue worker until something asks for the schedule, and a hundred attributed classes register in about 5 ms, once per process — the time `schedule:run` spends booting the application each minute dwarfs it.
 
 ## Development
 

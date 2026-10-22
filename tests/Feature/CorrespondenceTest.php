@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Stringable;
 use SchedulingAttributes\Contracts\Frequency;
 use SchedulingAttributes\Contracts\Modifier;
 use SchedulingAttributes\Day;
+use SchedulingAttributes\Tests\Fixtures\Hooks\Allowed;
+use SchedulingAttributes\Tests\Fixtures\Hooks\RecordAfter;
+use SchedulingAttributes\Tests\Fixtures\Hooks\RecordBefore;
+use SchedulingAttributes\Tests\Fixtures\Hooks\RecordSuccess;
 
 /**
  * The shape of an event that matters: what the fluent API sets, nothing about the
@@ -110,6 +115,17 @@ dataset('modifiers', [
     'PingOnFailure' => [new SchedulingAttributes\PingOnFailure('https://example.com/ko'), fn (Event $e) => $e->pingOnFailure('https://example.com/ko')],
 ]);
 
+dataset('hooks', [
+    'When' => [new SchedulingAttributes\When(Allowed::class), fn (Event $e) => $e->when(fn () => true)],
+    'Skip' => [new SchedulingAttributes\Skip(Allowed::class), fn (Event $e) => $e->skip(fn () => false)],
+    'Before' => [new SchedulingAttributes\Before(RecordBefore::class), fn (Event $e) => $e->before(fn () => null)],
+    'After' => [new SchedulingAttributes\After(RecordSuccess::class), fn (Event $e) => $e->after(fn () => null)],
+    'After with the output' => [new SchedulingAttributes\After(RecordAfter::class), fn (Event $e) => $e->after(fn (Stringable $output) => null)],
+    'OnSuccess' => [new SchedulingAttributes\OnSuccess(RecordSuccess::class), fn (Event $e) => $e->onSuccess(fn () => null)],
+    'OnFailure' => [new SchedulingAttributes\OnFailure(RecordSuccess::class), fn (Event $e) => $e->onFailure(fn () => null)],
+    'OnFailure with the output' => [new SchedulingAttributes\OnFailure(RecordAfter::class), fn (Event $e) => $e->onFailure(fn (Stringable $output) => null)],
+]);
+
 dataset('pausable', [
     'EvenWhenPaused' => [new SchedulingAttributes\EvenWhenPaused, fn (Event $e) => $e->evenWhenPaused()],
 ]);
@@ -132,6 +148,16 @@ it('gives a modifier attribute the same event as its fluent call', function (Mod
     expect(shape($byAttribute))->toBe(shape($byCall))
         ->and(shape($byAttribute))->not->toBe(shape($schedule->command('reports:prune')->daily()));
 })->with('modifiers');
+
+it('gives a hook attribute the same event as the closure it stands for', function (Modifier $attribute, Closure $fluent): void {
+    $schedule = new Schedule;
+
+    $attribute->apply($byAttribute = $schedule->command('reports:prune')->daily());
+    $fluent($byCall = $schedule->command('reports:prune')->daily());
+
+    expect(shape($byAttribute))->toBe(shape($byCall))
+        ->and(shape($byAttribute))->not->toBe(shape($schedule->command('reports:prune')->daily()));
+})->with('hooks');
 
 it('gives the pause modifier the same event as its fluent call, where Laravel has one', function (Modifier $attribute, Closure $fluent): void {
     $schedule = new Schedule;

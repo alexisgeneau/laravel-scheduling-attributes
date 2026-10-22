@@ -12,8 +12,12 @@ final class Ran
     /** @var list<string> */
     public static array $jobs = [];
 
+    /** @var list<string> */
+    public static array $hooks = [];
+
     public static function reset(): void
     {
         self::$jobs = [];
+        self::$hooks = [];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Contracts\Console\Kernel;
 use SchedulingAttributes\ScheduleAttributeException;
 use SchedulingAttributes\SchedulingAttributes;
+use SchedulingAttributes\Tests\Fixtures\Hooks\NotInvokable;
 use SchedulingAttributes\Tests\Fixtures\Invalid\BadTime;
 use SchedulingAttributes\Tests\Fixtures\Invalid\CommandOnQueue;
 use SchedulingAttributes\Tests\Fixtures\Invalid\JobInBackground;
@@ -66,5 +67,7 @@ it('refuses a wrong value as soon as the attribute is built', function (): void 
         ->and(fn () => new \SchedulingAttributes\Environments)->toThrow(InvalidArgumentException::class, 'give at least one environment')
         ->and(fn () => new \SchedulingAttributes\EmailOutputTo('ops'))->toThrow(InvalidArgumentException::class, '"ops" is not an email address')
         ->and(fn () => new \SchedulingAttributes\PingBefore('not a url'))->toThrow(InvalidArgumentException::class, 'is not a URL')
-        ->and(fn () => new \SchedulingAttributes\OnQueue(' '))->toThrow(InvalidArgumentException::class, 'queue cannot be blank');
+        ->and(fn () => new \SchedulingAttributes\OnQueue(' '))->toThrow(InvalidArgumentException::class, 'queue cannot be blank')
+        ->and(fn () => new \SchedulingAttributes\OnFailure('App\\Hooks\\Missing'))->toThrow(InvalidArgumentException::class, 'App\\Hooks\\Missing is not a class')
+        ->and(fn () => new \SchedulingAttributes\When(NotInvokable::class))->toThrow(InvalidArgumentException::class, NotInvokable::class.' is not invokable; give it a public __invoke() method');
 });

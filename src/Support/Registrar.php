@@ -29,10 +29,42 @@ final class Registrar
     /** @var list<Registration> */
     private array $registrations = [];
 
+    private ?Schedule $schedule = null;
+
+    private bool $registered = false;
+
+    private bool $registering = false;
+
     public function __construct(
         private readonly Application $app,
         private readonly Discovery $discovery,
     ) {}
+
+    /** The application's schedule, once Laravel has resolved it. */
+    public function attach(Schedule $schedule): void
+    {
+        $this->schedule = $schedule;
+    }
+
+    /**
+     * Registers the attribute events on the attached schedule, once, as soon as the
+     * commands can be enumerated. Called whenever the schedule is resolved or read.
+     */
+    public function registerIfReady(): void
+    {
+        if ($this->registered || $this->registering || $this->schedule === null || ! $this->ready()) {
+            return;
+        }
+
+        $this->registering = true;
+
+        try {
+            $this->register($this->schedule);
+        } finally {
+            $this->registered = true;
+            $this->registering = false;
+        }
+    }
 
     /**
      * Whether the commands can be enumerated now. During the console kernel's own
