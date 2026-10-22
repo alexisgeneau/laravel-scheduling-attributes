@@ -1,0 +1,7 @@
+providers:
+  - SchedulingAttributes\SchedulingAttributesServiceProvider
+
+env:
+  - APP_NAME=Workbench
+  - APP_ENV=local
+  - CACHE_STORE=array

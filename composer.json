@@ -1,0 +1,68 @@
+{
+    "name": "alexisgeneau/laravel-scheduling-attributes",
+    "description": "Schedule Artisan commands and jobs where they are written: PHP attributes on the class, registered in Laravel's own scheduler.",
+    "keywords": [
+        "laravel",
+        "scheduler",
+        "schedule",
+        "cron",
+        "attributes",
+        "artisan",
+        "jobs"
+    ],
+    "homepage": "https://github.com/alexisgeneau/laravel-scheduling-attributes",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Alexis Geneau",
+            "email": "contact@cote-dev.fr"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "dragonmantank/cron-expression": "^3.3",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/container": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SchedulingAttributes\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SchedulingAttributes\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SchedulingAttributes\\SchedulingAttributesServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G"
+    },
+    "config": {
+        "process-timeout": 0,
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
