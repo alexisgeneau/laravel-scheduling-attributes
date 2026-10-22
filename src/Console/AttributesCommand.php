@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SchedulingAttributes\Console;
 
+use DateTimeZone;
 use Illuminate\Console\Application;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\CallbackEvent;
@@ -43,7 +44,7 @@ final class AttributesCommand extends Command
             $target = $registration?->target() ?? $this->target($event);
 
             $rows[] = [
-                $event->getExpression(),
+                $this->expression($event),
                 $target,
                 $registration !== null ? $registration->class.' '.$registration->attribute() : 'code',
                 $this->nextRun($event),
@@ -102,6 +103,16 @@ final class AttributesCommand extends Command
         $command = str_replace([Application::phpBinary(), Application::artisanBinary()], '', (string) $event->command);
 
         return trim(str_replace(['"', "'"], '', $command));
+    }
+
+    /** The cron expression, with the timezone when it is not the application's. */
+    private function expression(Event $event): string
+    {
+        $timezone = $event->timezone instanceof DateTimeZone ? $event->timezone->getName() : $event->timezone;
+
+        return $timezone === null || $timezone === config('app.timezone')
+            ? $event->getExpression()
+            : $event->getExpression().' '.$timezone;
     }
 
     private function nextRun(Event $event): string

@@ -1,7 +1,18 @@
 providers:
   - SchedulingAttributes\SchedulingAttributesServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
 
 env:
   - APP_NAME=Workbench
   - APP_ENV=local
   - CACHE_STORE=array
+  - QUEUE_CONNECTION=sync
+
+workbench:
+  install: false
+  discovers:
+    web: false
+    api: false
+    commands: true
+    components: false
+    views: false

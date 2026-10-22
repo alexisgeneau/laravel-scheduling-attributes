@@ -113,7 +113,7 @@ SchedulingAttributes::withoutDefaultJobDirectory();                             
 
 ## Errors
 
-A wrong declaration is reported as soon as the schedule is read, which in practice is the first `php artisan` of the day in development. The message names the class, the attribute and the reason, and every command fails until it is fixed, exactly as with an error in `routes/console.php`:
+A wrong declaration is reported as soon as the schedule is read: `schedule:list`, `schedule:run`, `schedule:work`, `schedule:test` and `schedule:attributes` stop with a message naming the class, the attribute and the reason, and nothing is scheduled until it is fixed. The other commands are not affected.
 
 ```
 Invalid #[DailyAt] on App\Console\Commands\PruneReports: 25 is not a valid hour; expected 0 to 23.
@@ -125,7 +125,7 @@ Attributes are read on the concrete class only; nothing is inherited from an abs
 
 ## `schedule:attributes`
 
-Lists every scheduled event with where it comes from, and warns when the same command is scheduled both with an attribute and in code with the same expression — then it exits with a failure code, so it can run in CI.
+Lists every scheduled event with where it comes from (the expression carries its timezone when it differs from the application's), and warns when the same command is scheduled both with an attribute and in code with the same expression — then it exits with a failure code, so it can run in CI.
 
 ```
 +------------+----------------------------+----------------------------------------------+---------------------+
@@ -153,7 +153,7 @@ composer analyse   # PHPStan (Larastan, level 6)
 composer lint      # Pint
 ```
 
-The suite compares, for every attribute, the event it produces with the event the equivalent fluent call produces, then exercises `schedule:list`, `schedule:run`, the job discovery, the refusals and `schedule:attributes` against a small application of fixtures.
+The suite compares, for every attribute, the event it produces with the event the equivalent fluent call produces, then exercises `schedule:list`, `schedule:run`, the job discovery, the refusals and `schedule:attributes` against a small application of fixtures. `vendor/bin/testbench schedule:attributes` (or `schedule:list`, `schedule:run`) runs the real commands against the `workbench/` application, where a command and a job carry attributes next to a `routes/console.php` entry.
 
 ## License
 

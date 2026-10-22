@@ -41,7 +41,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "SchedulingAttributes\\Tests\\": "tests/"
+            "SchedulingAttributes\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/"
         }
     },
     "extra": {
