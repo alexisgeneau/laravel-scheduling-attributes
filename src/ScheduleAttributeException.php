@@ -45,7 +45,7 @@ final class ScheduleAttributeException extends RuntimeException
 
     public static function unsupported(string $class, string $attribute, string $method): self
     {
-        return new self(sprintf('#[%s] on %s: this version of Laravel has no Schedule::%s() method.', class_basename($attribute), $class, $method));
+        return new self(sprintf('#[%s] on %s: this version of Laravel has no Schedule::%s method.', class_basename($attribute), $class, str_contains($method, '(') ? $method : $method.'()'));
     }
 
     public static function notFound(string $class): self

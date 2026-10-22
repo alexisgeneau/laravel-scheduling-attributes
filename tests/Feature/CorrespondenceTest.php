@@ -8,7 +8,9 @@ use Illuminate\Support\Stringable;
 use SchedulingAttributes\Contracts\Frequency;
 use SchedulingAttributes\Contracts\Modifier;
 use SchedulingAttributes\Day;
+use SchedulingAttributes\Support\UnsupportedMethod;
 use SchedulingAttributes\Tests\Fixtures\Hooks\Allowed;
+use SchedulingAttributes\Tests\Fixtures\Hooks\NameAfterApplication;
 use SchedulingAttributes\Tests\Fixtures\Hooks\RecordAfter;
 use SchedulingAttributes\Tests\Fixtures\Hooks\RecordBefore;
 use SchedulingAttributes\Tests\Fixtures\Hooks\RecordSuccess;
@@ -33,6 +35,7 @@ function shape(Event $event): array
         'evenWhenPaused' => property_exists($event, 'evenWhenPaused') ? $event->evenWhenPaused : null,
         'withoutOverlapping' => $event->withoutOverlapping,
         'expiresAt' => $event->expiresAt,
+        'releaseOnTerminationSignals' => property_exists($event, 'releaseOnTerminationSignals') ? $event->releaseOnTerminationSignals : null,
         'onOneServer' => $event->onOneServer,
         'runInBackground' => $event->runInBackground,
         'filters, rejects, before, after' => $callbacks,
@@ -77,6 +80,8 @@ dataset('frequencies', [
     'MonthlyOn' => [new SchedulingAttributes\MonthlyOn(4, '15:00'), fn (Event $e) => $e->monthlyOn(4, '15:00')],
     'TwiceMonthly' => [new SchedulingAttributes\TwiceMonthly(1, 16, '13:00'), fn (Event $e) => $e->twiceMonthly(1, 16, '13:00')],
     'LastDayOfMonth' => [new SchedulingAttributes\LastDayOfMonth('15:00'), fn (Event $e) => $e->lastDayOfMonth('15:00')],
+    'DaysOfMonth' => [new SchedulingAttributes\DaysOfMonth([1, 10, 20]), fn (Event $e) => $e->daysOfMonth(1, 10, 20)],
+    'DaysOfMonth single day' => [new SchedulingAttributes\DaysOfMonth(15), fn (Event $e) => $e->daysOfMonth(15)],
     'Quarterly' => [new SchedulingAttributes\Quarterly, fn (Event $e) => $e->quarterly()],
     'QuarterlyOn' => [new SchedulingAttributes\QuarterlyOn(4, '14:00'), fn (Event $e) => $e->quarterlyOn(4, '14:00')],
     'Yearly' => [new SchedulingAttributes\Yearly, fn (Event $e) => $e->yearly()],
@@ -94,7 +99,6 @@ dataset('modifiers', [
     'Fridays' => [new SchedulingAttributes\Fridays, fn (Event $e) => $e->fridays()],
     'Saturdays' => [new SchedulingAttributes\Saturdays, fn (Event $e) => $e->saturdays()],
     'Days' => [new SchedulingAttributes\Days(Day::Monday, Day::Wednesday), fn (Event $e) => $e->days([1, 3])],
-    'DaysOfMonth' => [new SchedulingAttributes\DaysOfMonth(1, 10, 20), fn (Event $e) => $e->daysOfMonth(1, 10, 20)],
     'Between' => [new SchedulingAttributes\Between('08:00', '17:00'), fn (Event $e) => $e->between('08:00', '17:00')],
     'UnlessBetween' => [new SchedulingAttributes\UnlessBetween('23:00', '04:00'), fn (Event $e) => $e->unlessBetween('23:00', '04:00')],
     'Timezone' => [new SchedulingAttributes\Timezone('Europe/Paris'), fn (Event $e) => $e->timezone('Europe/Paris')],
@@ -124,6 +128,7 @@ dataset('hooks', [
     'OnSuccess' => [new SchedulingAttributes\OnSuccess(RecordSuccess::class), fn (Event $e) => $e->onSuccess(fn () => null)],
     'OnFailure' => [new SchedulingAttributes\OnFailure(RecordSuccess::class), fn (Event $e) => $e->onFailure(fn () => null)],
     'OnFailure with the output' => [new SchedulingAttributes\OnFailure(RecordAfter::class), fn (Event $e) => $e->onFailure(fn (Stringable $output) => null)],
+    'Tap' => [new SchedulingAttributes\Tap(NameAfterApplication::class), fn (Event $e) => $e->tap(fn (Event $e) => $e->name('tapped by '.config('app.name')))],
 ]);
 
 dataset('pausable', [
@@ -167,3 +172,20 @@ it('gives the pause modifier the same event as its fluent call, where Laravel ha
 
     expect(shape($byAttribute))->toBe(shape($byCall));
 })->with('pausable')->skip(! method_exists(Event::class, 'evenWhenPaused'), 'This version of Laravel has no schedule:pause.');
+
+it('keeps the overlap lock on termination signals where Laravel can', function (): void {
+    $schedule = new Schedule;
+
+    (new SchedulingAttributes\WithoutOverlapping(30, releaseOnTerminationSignals: false))->apply($byAttribute = $schedule->command('reports:prune')->daily());
+    $byCall = $schedule->command('reports:prune')->daily()->withoutOverlapping(30, false);
+
+    expect(shape($byAttribute))->toBe(shape($byCall))
+        ->and($byAttribute->releaseOnTerminationSignals)->toBeFalse();
+})->skip((new ReflectionMethod(Event::class, 'withoutOverlapping'))->getNumberOfParameters() < 2, 'This version of Laravel always releases the lock on termination signals.');
+
+it('refuses to keep the overlap lock on termination signals where Laravel cannot', function (): void {
+    $event = (new Schedule)->command('reports:prune')->daily();
+
+    expect(fn () => (new SchedulingAttributes\WithoutOverlapping(30, releaseOnTerminationSignals: false))->apply($event))
+        ->toThrow(UnsupportedMethod::class, 'Schedule::withoutOverlapping($expiresAt, $releaseOnTerminationSignals) is not available.');
+})->skip((new ReflectionMethod(Event::class, 'withoutOverlapping'))->getNumberOfParameters() >= 2, 'This version of Laravel has the parameter.');

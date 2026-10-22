@@ -14,6 +14,6 @@ final class UnsupportedMethod extends RuntimeException
 {
     public function __construct(public readonly string $method)
     {
-        parent::__construct(sprintf('Schedule::%s() is not available.', $method));
+        parent::__construct(sprintf('Schedule::%s is not available.', str_contains($method, '(') ? $method : $method.'()'));
     }
 }

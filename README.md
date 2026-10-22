@@ -2,7 +2,7 @@
 
 Schedule Artisan commands and jobs where they are written: PHP attributes on the class, registered in Laravel's own scheduler.
 
-> **Status:** 0.1.0, tested with Laravel 12 and 13 on PHP 8.2 to 8.5. Until 1.0, a minor version may still change the `SchedulingAttributes` discovery methods, the wording of the refusals or the output of `schedule:attributes`; the changelog says so when it happens.
+> **Status:** 0.2.0, tested with Laravel 12 and 13 on PHP 8.2 to 8.5. Until 1.0, a minor version may still change the `SchedulingAttributes` discovery methods, the wording of the refusals or the output of `schedule:attributes`; the changelog says so when it happens.
 
 ```php
 use Illuminate\Console\Command;
@@ -61,15 +61,15 @@ Frequency attributes are **repeatable**: each one creates an event, a class may 
 
 | Group | Attributes | Scope |
 | --- | --- | --- |
-| Frequency | `Cron`, `EverySecond` … `EveryThirtySeconds`, `EveryMinute` … `EveryThirtyMinutes`, `Hourly`, `HourlyAt`, `EveryOddHour`, `EveryTwoHours` … `EverySixHours`, `Daily`, `DailyAt`, `TwiceDaily`, `TwiceDailyAt`, `Weekly`, `WeeklyOn`, `Monthly`, `MonthlyOn`, `TwiceMonthly`, `LastDayOfMonth`, `Quarterly`, `QuarterlyOn`, `Yearly`, `YearlyOn` | repeatable, one event each, `arguments:` optional |
-| Days and times | `Weekdays`, `Weekends`, `Mondays` … `Sundays`, `Days`, `DaysOfMonth`, `Between`, `UnlessBetween`, `Timezone`, `Environments`, `EvenInMaintenanceMode`, `EvenWhenPaused` | class |
+| Frequency | `Cron`, `EverySecond` … `EveryThirtySeconds`, `EveryMinute` … `EveryThirtyMinutes`, `Hourly`, `HourlyAt`, `EveryOddHour`, `EveryTwoHours` … `EverySixHours`, `Daily`, `DailyAt`, `TwiceDaily`, `TwiceDailyAt`, `Weekly`, `WeeklyOn`, `Monthly`, `MonthlyOn`, `TwiceMonthly`, `DaysOfMonth`, `LastDayOfMonth`, `Quarterly`, `QuarterlyOn`, `Yearly`, `YearlyOn` | repeatable, one event each, `arguments:` optional |
+| Days and times | `Weekdays`, `Weekends`, `Mondays` … `Sundays`, `Days`, `Between`, `UnlessBetween`, `Timezone`, `Environments`, `EvenInMaintenanceMode`, `EvenWhenPaused` | class |
 | Execution | `WithoutOverlapping`, `OnOneServer`, `RunInBackground`, `Name`, `User` | class |
 | Output | `SendOutputTo`, `AppendOutputTo`, `EmailOutputTo`, `EmailOutputOnFailure` | class, commands only |
 | Pings | `PingBefore`, `ThenPing`, `PingOnSuccess`, `PingOnFailure` | class |
-| Hooks | `When`, `Skip`, `Before`, `After`, `OnSuccess`, `OnFailure` | class, repeatable, take an invokable class |
+| Hooks | `When`, `Skip`, `Before`, `After`, `OnSuccess`, `OnFailure`, `Tap` | class, repeatable, take an invokable class |
 | Jobs | `OnQueue`, `OnConnection` | class, jobs only |
 
-Days of the week take the `SchedulingAttributes\Day` enum or Laravel's integers (Sunday is 0); times are `HH:MM`; several minutes past the hour, days or addresses are passed as a list or as variadic arguments (`#[Days(Day::Monday, Day::Friday)]`, `#[Environments('staging', 'production')]`). Every value is checked when the attribute is built: a wrong one is refused with the attribute, the class and the reason.
+Days of the week take the `SchedulingAttributes\Day` enum or Laravel's integers (Sunday is 0); times are `HH:MM`; several minutes past the hour, days or addresses are passed as a list or as variadic arguments (`#[Days(Day::Monday, Day::Friday)]`, `#[Environments('staging', 'production')]`). Every value is checked when the attribute is built: a wrong one is refused with the attribute, the class and the reason. The scheduler's aliases have no attribute of their own: `at()` is `DailyAt`, `then()` is `After`, `description()` is `Name`, `emailWrittenOutputTo()` is `EmailOutputTo`.
 
 ### Hooks
 
@@ -94,9 +94,25 @@ final class NotifyOps
 
 `When` and `Skip` take the verdict of `__invoke()`; `Before`, `After`, `OnSuccess` and `OnFailure` run it. All six are repeatable.
 
-### What stays in `routes/console.php`
+### Everything else: `Tap`
 
-`Schedule::call()` and `Schedule::exec()`, the `*If` variants of the pings and `thenWithOutput()` with `$onlyIfOutputExists` have no attribute: they stay in code, next to the attributes, on the same schedule.
+`Event::tap()` has its attribute too. `#[Tap(MonitorWithSentry::class)]` hands the event to the invokable when it is registered, so anything the scheduler can do that no other attribute covers stays next to the class: a method added to the scheduler by a package, the `*If` variants of the pings, `thenWithOutput()` with `$onlyIfOutputExists`.
+
+```php
+#[Daily, Tap(MonitorWithSentry::class)]
+final class ReconcilePayments extends Command { /* ... */ }
+
+final class MonitorWithSentry
+{
+    public function __invoke(Event $event): void
+    {
+        $event->sentryMonitor();
+        $event->pingOnFailureIf(app()->isProduction(), 'https://example.com/ko');
+    }
+}
+```
+
+Only `Schedule::call()` and `Schedule::exec()` stay in `routes/console.php`: there is no class to carry an attribute. They run next to the attributes, on the same schedule.
 
 ## Jobs
 
